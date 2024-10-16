@@ -4,6 +4,7 @@ import recommend from "@/components/Recommend.vue";
 import Scripts from "@/components/Scripts.vue";
 import AboutUs from "@/components/AboutUs.vue";
 import FYI from "@/components/FYI.vue";
+import Upload from "@/components/Upload.vue";
 
 const routes = [
     {
@@ -31,6 +32,11 @@ const routes = [
         path: '/fyi',
         name: 'fyi',
         component: FYI
+    },
+    {
+        path: '/upload',
+        name: 'upload',
+        component: Upload,
     }
 ]
 

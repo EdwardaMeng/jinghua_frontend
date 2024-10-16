@@ -10,6 +10,8 @@
           <v-btn title="所有剧本" to="/scripts" prepend-icon="mdi-file">所有剧本</v-btn>
           <v-btn title="关于我们" to="/aboutUs" prepend-icon="mdi-emoticon-devil">关于我们</v-btn>
           <v-btn title="预约须知" to="/fyi" prepend-icon="mdi-information">预约须知</v-btn>
+          <v-btn title="上传剧本" to="/upload" prepend-icon="mdi-file">上传剧本</v-btn>
+
         </div>
       </v-app-bar>
       <v-main class="content">

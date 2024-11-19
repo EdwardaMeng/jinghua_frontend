@@ -1,148 +1,159 @@
 <script setup>
-import {ref} from "vue";
-import scriptsFile from "@/scripts.js";
+import {onMounted, ref} from "vue";
+import ScriptsDataService from "@/services/ScriptsDataService.js";
 
-const scripts = scriptsFile;
+onMounted(() => {
+    ScriptsDataService.getScriptsByType('热门')
+        .then(data => {
+          scripts.value = data.data
+          console.log(scripts.value)
+        })
+        .catch((error) => {
+          console.log(error);
+        })
+  })
+  const scripts = ref([]);
 
   const selectedScript = ref(null);
   const scriptDialog = ref(false);
+
   const openDialog = (script) => {
     scriptDialog.value = true;
     selectedScript.value = script;
+    selectedScript.value.scriptType = script.scriptType.split(',');
   }
   const reserveScript = () => {
-    //backend
     alert(`你已经成功预约 ${selectedScript.value.name}`)
   }
 </script>
 
 <template>
-  <div class="scripts">
-    <div style="margin:20px; display: flex; justify-content: center; align-items: center;">
-      <div class="text-h3">热门剧本</div>
-    </div>
-
-    <v-divider></v-divider>
-    <v-item-group style="justify-content: center; align-items: center;">
-      <v-container :class="['d-flex align-center', 'justify-center']"
-      >
-        <v-row
-        >
-          <v-col
-              v-for="script in scripts"
-              :key="script.id"
-              cols="6"
-              md="3"
-              @click="openDialog(script)"
-          >
-            <v-item>
-              <v-card
-                  :class="['d-flex align-center flex-column', 'justify-center']"
-                  height="400"
-                  width="300"
-                  style="margin-left: 60px; color: white; background-color: #212121"
-                  hover
+    <v-container class="scripts">
+      <v-row style="width: 100%">
+        <v-col cols="12" align="center" justify="center" >
+          <div class="[text-lg-h1 text-md-h2 text-sm-h6]">热门剧本</div>
+        </v-col>
+        <v-col cols="12" align="center" justify="center">
+          <v-divider style="color: white"></v-divider>
+        </v-col>
+        <v-col>
+          <v-item-group>
+            <v-row justify="center" align="start">
+              <v-col
+                  v-for="script in scripts"
+                  :key="script"
+                  @click="openDialog(script)"
+                  cols="auto"
               >
-                <div style="height: 350px; width: 300px; margin:0">
-                  <v-img
-                      :src="script.image"
-                      alt="剧本封面"
-                      class="mb-2"
-                      height="90%"
-                      width="100%"
-                      style="object-fit: cover;"
-                  ></v-img>
-                </div>
+                <v-item>
+                  <v-card
+                      class="script"
+                      style="color: white; background-color: #212121 ;"
+                      hover
+                  >
+                    <v-container style="height: 100%">
+                      <v-row justify="center" align="center" style="height: 90%">
+                        <v-col style="height:100%;width:100%">
+                          <v-img
+                              :src="script.scriptImage"
+                              alt="剧本封面"
+                          ></v-img>
+                        </v-col>
+                      </v-row>
+                      <v-row justify="center" align="center">
+                        <v-col>
+                          <div style="text-align: center" >《{{ script.scriptName }}》</div>
+                        </v-col>
+                      </v-row>
+                    </v-container>
 
-                <div class="text-h5 d-flex align-center justify-center" style="width:200px; height: 20px;">《{{ script.name }}》</div>
-              </v-card>
-            </v-item>
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-item-group>
+                  </v-card>
+                </v-item>
+              </v-col>
+            </v-row>
+          </v-item-group>
+        </v-col>
+      </v-row>
+    </v-container>
 
-    <v-dialog v-model="scriptDialog" persistent hide-overlay class="scriptDialog">
+    <v-dialog v-model="scriptDialog" fullscreen persistent hide-overlay class="scriptDialog">
       <v-card class="scriptCard">
-        <v-container>
-          <v-row>
-            <v-col cols="6">
-              <v-card-subtitle>
-                <v-img :src="selectedScript?.image" style="max-height: 700px"></v-img>
-              </v-card-subtitle>
-            </v-col>
-            <v-col cols="6">
-              <v-card-title class="text-h5 d-flex align-center font-weight-bold" style="width: 400px; color:white">
-                {{ selectedScript?.name }}
+        <v-container style="height: 100%">
+          <v-row justify="center" align="center" style="height: 10%;">
+            <v-col align="center" cols="12">
+              <v-card-title>
+                《{{ selectedScript.scriptName }}》
               </v-card-title>
-              <v-card-text style="width: 400px; height: 600px">
-                <div class="text-center">
-                  <v-chip-group>
-                    <v-chip
-                        class="ma-2"
-                        label
-                        v-for="(type, index) in selectedScript?.type"
-                        :key="index"
-                    >
-                      {{type}}
-                    </v-chip>
-                  </v-chip-group>
-                </div>
-                <p><strong>适合人数：</strong>{{ selectedScript?.players }}</p>
-                <p><strong>时长：</strong>{{ selectedScript?.duration }}h</p>
-                <p><strong>价格：</strong>${{ selectedScript?.price }}</p>
-                <p><strong>简介：</strong>{{ selectedScript?.description }}</p>
-              </v-card-text>
-              <v-card-actions style="display: flex; align-items: center; align-content: center;">
-                <v-btn color="primary" @click="reserveScript">
-                  预约
-                </v-btn>
-                <v-btn color="secondary" @click="scriptDialog = false">
-                  关闭
-                </v-btn>
-              </v-card-actions>
+            </v-col>
+          </v-row>
+          <v-row style="height: 80%" justify="center" align="center">
+            <v-col justify="center" align="center" style="height: 100%;">
+              <v-img :src="selectedScript.scriptImage"></v-img>
+            </v-col>
+            <v-col  justify="center" align="center" style="height: 100%;">
+              <v-row justify="center" align="center">
+                <v-chip-group>
+                  <v-chip
+                      class="ma-2"
+                      label
+                      v-for="(type, index) in selectedScript.scriptType"
+                      :key="index"
+                  >
+                    {{type}}
+                  </v-chip>
+                </v-chip-group>
+              </v-row>
+              <v-row>
+                <p><strong>适合人数：</strong>{{ selectedScript.scriptPlayersNumber }}人</p>
+              </v-row>
+              <v-row>
+                <p><strong>人数介绍：</strong>{{ selectedScript.scriptPlayersNumberDescription }}</p>
+              </v-row>
+              <v-row>
+                <p><strong>时长：</strong>{{ selectedScript.scriptDuration }}h</p>
+              </v-row>
+              <v-row>
+                <p><strong>价格：</strong>${{ selectedScript.scriptPrice }}</p>
+              </v-row>
+              <v-row>
+                <p><strong>简介：</strong>{{ selectedScript.scriptDescription }}</p>
+              </v-row>
+            </v-col>
+          </v-row>
+          <v-row style="height: 10%">
+            <v-col justify="center" align="center" cols="6">
+              <v-btn color="primary" @click="reserveScript">
+                预约
+              </v-btn>
+            </v-col>
+            <v-col align="center" cols="6">
+              <v-btn color="secondary" @click="scriptDialog = false">
+                关闭
+              </v-btn>
             </v-col>
           </v-row>
         </v-container>
       </v-card>
     </v-dialog>
-  </div>
 </template>
 
 <style scoped>
+
+.script{
+  height: 300px;
+  width: 250px;
+  background-color: #181818;
+}
+
 .scripts{
-  align-items: center;
-  justify-content: center;
-  height: 100%;
   background: #181818;
-  overflow: scroll;
   color: white;
 }
-.scriptDialog{
-  background: transparent;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  color: white;
 
 
-}
 .scriptCard{
-  background: #181818;
-  width: 70vw;
-  height: 90vh;
-  margin: auto;      /* 将卡片水平居中 */
-  position: absolute;
-  top: 50%;          /* 将卡片垂直居中 */
-  left: 50%;
-  transform: translate(-50%, -50%); /* 通过 transform 实现居中 */
-  padding: 20px;
+  background-color: #181818;
   color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-
 }
+
 </style>

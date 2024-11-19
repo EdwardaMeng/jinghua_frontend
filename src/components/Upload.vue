@@ -1,17 +1,17 @@
 <script setup>
-import {computed, ref} from "vue";
+import {ref} from "vue";
 import ScriptsDataService from "@/services/ScriptsDataService.js";
 
-  const scriptName = ref("")
-  const scriptPrice = ref("")
-  const scriptNumberOfPlayers = ref('')
+const scriptName = ref("")
+  const scriptPrice = ref()
+  const scriptNumberOfPlayers = ref()
   const scriptNumberOfPlayersDescription = ref("")
   const scriptDescription = ref("")
   const scriptDuration = ref("")
   const scriptType = ref([])
+  const scriptImage = ref("")
 
-
-  const onClick = () => {
+  const uploadScript = () => {
     const scriptTypeToString = scriptType.value.toString()
     const data = {
       scriptName: scriptName.value,
@@ -21,16 +21,18 @@ import ScriptsDataService from "@/services/ScriptsDataService.js";
       scriptDescription: scriptDescription.value,
       scriptDuration: scriptDuration.value,
       scriptType: scriptTypeToString,
+      scriptImage: scriptImage.value,
     }
     ScriptsDataService.create(data)
         .then((response) => {
-          console.log(response.data)
+          console.log(response.data.message)
+          alert(response.data.message)
+          location.reload()
+
         })
         .catch((error) => {
           console.log(error)
         })
-
-    alert(`Submit script ${scriptName.value}`)
   }
 </script>
 
@@ -69,7 +71,7 @@ import ScriptsDataService from "@/services/ScriptsDataService.js";
       <v-select
           label="剧本类型"
           v-model="scriptType"
-          :items="['本格','变格','推理','硬核','情感','古风','阵营','机制','还原','欢乐']"
+          :items="['热门','本格','变格','推理','硬核','情感','古风','阵营','机制','还原','欢乐']"
           chips
           multiple
           :rules="[v => !!v || '此处不能为空']"
@@ -81,13 +83,18 @@ import ScriptsDataService from "@/services/ScriptsDataService.js";
           :rules="[v => !!v || '此处不能为空']"
 
       ></v-text-field>
+      <v-text-field
+          v-model="scriptImage"
+          label="剧本封面"
+          :rules="[v => !!v || '此处不能为空']"
+      ></v-text-field>
 <!--      <v-file-input-->
-<!--          accept="image/*"-->
+<!--          v-model="scriptImageFile"-->
 <!--          label="剧本封面"-->
 <!--          :rules="[v => !!v || '此处不能为空']"-->
-
-<!--      ></v-file-input>-->
-      <v-btn type="submit" block @click="onClick">上传剧本</v-btn>
+<!--      >-->
+<!--      </v-file-input>-->
+      <v-btn type="submit" block @click="uploadScript">上传剧本</v-btn>
     </v-form>
   </v-sheet>
 </template>

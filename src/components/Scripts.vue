@@ -1,25 +1,120 @@
 <script setup>
 
-import {ref} from "vue";
-import scriptsFile from "@/scripts.js";
+import {onMounted, ref} from "vue";
+import ScriptsDataService from "@/services/ScriptsDataService.js";
+import dmDataService from "@/services/DmDataService.js";
+import timeslotDataService from "@/services/TimeslotDataService.js";
+import reservationService from "@/services/ReservationService.js";
 
+onMounted(async () => {
+  await ScriptsDataService.getAll()
+      .then(data => {
+        scripts.value = data.data
+        filteredScript.value = scripts.value
+        // console.log(scripts.value)
+      })
+      .catch((error) => {
+        console.log(error);
+      })
 
-const scripts = scriptsFile;
+  await dmDataService.getAllDM()
+      .then(data => {
+        dms.value = data.data
+      })
+      .catch((error) => {
+        console.log(error);
+      })
+})
 
-  const filteredScript = ref([...scripts.value]);
-  const selectedScript = ref(null);
+  const scripts = ref([]);
+  const dms = ref([]);
+  const filteredScript = ref([]);
+  const selectedScript = ref('');
   const scriptDialog = ref(false);
   const filterDialog = ref(false);
+  const reservationDialog = ref(false);
+  const informationDialog = ref(false);
+  const selectedTimeslots = ref([]);
+  const timeslotsDialog = ref(false);
+  const selectedReservationTimeslot = ref('')
+  const selectedDm = ref('')
+  const wechat = ref('')
+  const phoneNumber = ref('无')
+  const email = ref('无')
+  const userName = ref('')
 
 
   const openDialog = (script) => {
     scriptDialog.value = true;
     selectedScript.value = script;
+    selectedScript.value.scriptType = script.scriptType.split(',');
+
   }
 
-  const reserveScript = () => {
-    //backend
-    alert(`你已经成功预约 ${selectedScript.value.name}`)
+  const openReservationDialog = (script) => {
+      reservationDialog.value = true;
+  }
+
+  const openInformationDialog = () => {
+    informationDialog.value = true;
+  }
+
+  const openTimeslotsDialog = async (name) => {
+    await timeslotDataService.getAllAvailableTimeslotsByName(name)
+        .then((response) => {
+          if (response.data.length > 0) {
+            selectedTimeslots.value = response.data;
+            selectedDm.value = name
+            timeslotsDialog.value = true;
+          }
+          else{
+            alert('当前DM没有可选时间段')
+          }
+        })
+        .catch(error => {
+          console.log(error);
+        })
+
+  }
+
+  const reserveScript = async () => {
+    console.log(selectedScript.value)
+    const ReservationData = {
+      dm: selectedDm.value,
+      timeslot: selectedReservationTimeslot.value,
+      script: selectedScript.value.scriptName,
+      wechat: wechat.value,
+      phoneNumber: phoneNumber.value,
+      email: email.value,
+      userName: userName.value
+    }
+
+    const TimeslotData = {
+      dm: selectedDm.value,
+      timeslot: selectedReservationTimeslot.value
+    }
+
+    await timeslotDataService.reserveTimeslot(TimeslotData)
+    .then(async (response) => {
+      if (response.data.success) {
+        await reservationService.createReservation(ReservationData)
+            .then(response => {
+              if(response.data.success)
+                alert(`你已经成功预约 ${selectedScript.value.scriptName} 于时间段 ${selectedReservationTimeslot.value}`)
+              else{
+                alert("预约失败")
+              }
+            })
+            .catch(err => {
+              console.log(err)
+            })
+      } else {
+        alert("预约失败")
+      }
+    })
+        .catch((error) => {
+          console.log(error);
+        })
   }
 
   const openFilter = () => {
@@ -34,170 +129,212 @@ const scripts = scriptsFile;
   const searchScripts = () => {
     const query = searchQuery.value;
     if(query === ''){
-      // console.log('empty');
       filteredScript.value = scripts.value;
     }
     else{
-      // console.log(filteredScript.value);
-      // console.log(query);
-      filteredScript.value = filteredScript.value.filter((script) =>
-        script.name.includes(query));
+      ScriptsDataService.get(query)
+          .then(response => {
+            filteredScript.value = response.data;
+            console.log(filteredScript.value);
+          })
+          .catch((error) => {
+            console.log(error);
+          })
+
     }
 
   }
 
-const scriptTypes = ["悬疑", "惊悚", "恐怖", "喜剧", "冒险", "中式", "情感"];
-const selectedTypes = ref([]);
-const selectedPlayerNumber = ref('不限');
-const scriptPlayerNumbers = ['不限','5','6','7','8','9'];
+  const scriptTypes = ["本格","变格","推理","悬疑", "惊悚", "恐怖", "喜剧", "冒险", "中式", "情感"];
+  const selectedTypes = ref('无');
+  const selectedPlayerNumber = ref('不限');
+  const scriptPlayerNumbers = ['不限','5','6','7','8','9'];
 
 
 
   const filterScripts = () => {
-    console.log(selectedPlayerNumber.value);
-    console.log(selectedTypes.value);
-    if(selectedTypes.value.length === 0 && selectedPlayerNumber.value === '不限'){
+    if(selectedTypes.value === '无' && selectedPlayerNumber.value === '不限'){
       filteredScript.value = scripts.value;
+      filterDialog.value = false;
     }
+    else if(selectedPlayerNumber.value === '不限' && selectedTypes.value !== '无'){
+      const query = selectedTypes.value
+      ScriptsDataService.getScriptsByType(query)
+          .then(response => {
+            filteredScript.value = response.data;
+          })
+          .catch((error) => {
+            console.log(error);
+          })
+    }
+    else if(selectedTypes.value === '无' && selectedPlayerNumber.value !== '不限'){
+      const type = selectedPlayerNumber.value
+      ScriptsDataService.getScriptsByPlayersNumber(type)
+          .then(response => {
+            filteredScript.value = response.data;
+          })
+          .catch(error => {
+            console.log(error)
+          })
+      }
     else{
-      if(selectedPlayerNumber.value === '不限'){
-        filteredScript.value = scripts.value;
-        filteredScript.value = filteredScript.value.filter((script) =>
-            selectedTypes.value.every(type => Object.values(script)[3].includes(type))
-        )
-      }
-      else{
-        filteredScript.value = scripts.value;
-        filteredScript.value = filteredScript.value.filter((script) =>
-            selectedTypes.value.every(type => Object.values(script)[3].includes(type))
-        )
-        filteredScript.value = filteredScript.value.filter((script) =>
-            Object.values(script)[4].toString() === selectedPlayerNumber.value
-        )
-      }
+      const number = selectedPlayerNumber.value
+      const type = selectedTypes.value
+      ScriptsDataService.getScriptsByTypeAndNumber(type, number)
+          .then(response => {
+            filteredScript.value = response.data
+          })
+          .catch((error) => {
+            console.log(error)
+          })
     }
   }
 </script>
 
 <template>
-  <div class="search">
-    <v-btn style="height: 48px; width: 80px" @click="showAllScripts">返回</v-btn>
-    <v-text-field class="search-input"
-        append-inner-icon="mdi-magnify"
-        v-model="searchQuery"
-        density="comfortable"
-        label="查找剧本"
-        variant="solo"
-        hide-details
-        single-line
-        @click:append-inner="searchScripts"
-    ></v-text-field>
-    <v-btn @click="openFilter" style="height: 48px; width: 80px">过滤<v-icon>mdi-filter</v-icon></v-btn>
-  </div>
-  <v-divider style="color: white"></v-divider>
-  <div class="scripts">
-    <v-item-group>
-      <v-container
-      >
-        <v-row
-        >
-          <v-col
-              v-for="script in filteredScript"
-              :key="script.id"
-              cols="6"
-              md="3"
-              @click="openDialog(script)"
-          >
-            <v-item>
-              <v-card
-                  :class="['d-flex align-center flex-column', 'justify-center']"
-                  height="400"
-                  width="300"
-                  style="margin-left: 60px; color: white; background-color: #212121"
-                  hover
-              >
-                <div style="height: 350px; width: 300px; margin:0">
-                  <v-img
-                      :src="script.image"
-                      alt="剧本封面"
-                      class="mb-2"
-                      height="90%"
-                      width="100%"
-                      style="object-fit: cover;"
-                  ></v-img>
-                </div>
-
-                <div class="text-h5 d-flex align-center justify-center" style="width:200px; height: 20px;">《{{ script.name }}》</div>
-              </v-card>
-            </v-item>
+  <v-container>
+    <v-row>
+      <v-col cols="12">
+        <v-row justify="center" align="center">
+          <v-col align="center">
+            <v-btn @click="showAllScripts">返回</v-btn>
+          </v-col>
+          <v-col align="center">
+            <v-text-field
+                append-inner-icon="mdi-magnify"
+                v-model="searchQuery"
+                label="查找剧本"
+                variant="solo"
+                @click:append-inner="searchScripts"
+                hide-details
+            ></v-text-field>
+          </v-col>
+          <v-col align="center">
+            <v-btn @click="openFilter">过滤<v-icon>mdi-filter</v-icon></v-btn>
           </v-col>
         </v-row>
-      </v-container>
-    </v-item-group>
+      </v-col>
+      <v-col cols="12">
+        <v-divider style="color: white"></v-divider>
+      </v-col>
+      <v-col col="12">
+        <v-container class="scripts">
+          <v-row style="width: 100%">
+            <v-col>
+              <v-item-group>
+                <v-row justify="center" align="start">
+                  <v-col
+                      v-for="script in filteredScript"
+                      :key="script"
+                      @click="openDialog(script)"
+                      cols="auto"
+                  >
+                    <v-item>
+                      <v-card
+                          class="script"
+                          style="color: white; background-color: #212121 ;"
+                          hover
+                      >
+                        <v-container style="height: 100%">
+                          <v-row justify="center" align="center" style="height: 90%">
+                            <v-col style="height:100%;width:100%">
+                              <v-img
+                                  :src="script.scriptImage"
+                                  alt="剧本封面"
+                              ></v-img>
+                            </v-col>
+                          </v-row>
+                          <v-row justify="center" align="center">
+                            <v-col>
+                              <div style="text-align: center" >《{{ script.scriptName }}》</div>
+                            </v-col>
+                          </v-row>
+                        </v-container>
 
-    <v-dialog v-model="scriptDialog" persistent hide-overlay class="scriptDialog">
-      <v-card class="scriptCard">
-        <v-container>
-          <v-row>
-            <v-col cols="6">
-              <v-card-subtitle>
-                <v-img :src="selectedScript?.image" style="max-height: 700px"></v-img>
-              </v-card-subtitle>
-            </v-col>
-            <v-col cols="6">
-              <v-card-title class="text-h5 d-flex align-center" style="width: 400px;">
-                {{ selectedScript?.name }}
-              </v-card-title>
-              <v-card-text style="width: 400px; height: 600px">
-                <div class="text-center">
-                  <v-chip-group>
-                    <v-chip
-                        class="ma-2"
-                        label
-                        v-for="(type, index) in selectedScript?.type"
-                        :key="index"
-                    >
-                      {{type}}
-                    </v-chip>
-                  </v-chip-group>
-                </div>
-                <p><strong>适合人数：</strong>{{ selectedScript?.players }}</p>
-                <p><strong>时长：</strong>{{ selectedScript?.duration }}h</p>
-                <p><strong>价格：</strong>${{ selectedScript?.price }}</p>
-                <p><strong>简介：</strong>{{ selectedScript?.description }}</p>
-              </v-card-text>
-              <v-card-actions style="display: flex; align-items: center; align-content: center;">
-                <v-btn color="primary" @click="reserveScript">
-                  预约
-                </v-btn>
-                <v-btn color="secondary" @click="scriptDialog = false">
-                  关闭
-                </v-btn>
-              </v-card-actions>
+                      </v-card>
+                    </v-item>
+                  </v-col>
+                </v-row>
+              </v-item-group>
             </v-col>
           </v-row>
         </v-container>
-      </v-card>
-    </v-dialog>
-  </div>
+      </v-col>
+    </v-row>
+  </v-container>
 
-  <div>
+  <v-dialog v-model="scriptDialog" fullscreen persistent hide-overlay class="scriptDialog">
+    <v-card class="scriptCard">
+      <v-container style="height: 100%">
+        <v-row justify="center" align="center" style="height: 10%;">
+          <v-col align="center" cols="12">
+            <v-card-title>
+              《{{ selectedScript.scriptName }}》
+            </v-card-title>
+          </v-col>
+        </v-row>
+        <v-row style="height: 80%" justify="center" align="center">
+          <v-col justify="center" align="center" style="height: 100%;">
+            <v-img :src="selectedScript.scriptImage"></v-img>
+          </v-col>
+          <v-col  justify="center" align="center" style="height: 100%;">
+            <v-row justify="center" align="center">
+              <v-chip-group>
+                <v-chip
+                    class="ma-2"
+                    label
+                    v-for="(type, index) in selectedScript.scriptType"
+                    :key="index"
+                >
+                  {{type}}
+                </v-chip>
+              </v-chip-group>
+            </v-row>
+            <v-row>
+              <p><strong>适合人数：</strong>{{ selectedScript.scriptPlayersNumber }}人</p>
+            </v-row>
+            <v-row>
+              <p><strong>人数介绍：</strong>{{ selectedScript.scriptPlayersNumberDescription }}</p>
+            </v-row>
+            <v-row>
+              <p><strong>时长：</strong>{{ selectedScript.scriptDuration }}h</p>
+            </v-row>
+            <v-row>
+              <p><strong>价格：</strong>${{ selectedScript.scriptPrice }}</p>
+            </v-row>
+            <v-row>
+              <p><strong>简介：</strong>{{ selectedScript.scriptDescription }}</p>
+            </v-row>
+          </v-col>
+        </v-row>
+        <v-row style="height: 10%">
+          <v-col justify="center" align="center" cols="6">
+            <v-btn color="primary" @click="openReservationDialog">
+              预约
+            </v-btn>
+          </v-col>
+          <v-col align="center" cols="6">
+            <v-btn color="secondary" @click="scriptDialog = false">
+              关闭
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-card>
+  </v-dialog>
+
     <v-dialog v-model="filterDialog" fullscreen persistent hide-overlay class="filterDialog">
       <form class="filterForm">
         <v-container>
           <v-row>
-            <v-col
-                v-for="(type, index) in scriptTypes"
-                :key="index"
-                cols:auto
-            >
-              <v-checkbox
-                  v-model="selectedTypes"
-                  :label="type"
-                  :value="type"
-                  hide-details
-              ></v-checkbox>
-            </v-col>
+              <v-radio-group v-model="selectedTypes" inline>
+                <v-radio
+                    v-for="type in scriptTypes"
+                    :key="type"
+                    :label="type"
+                    :value="type"
+                ></v-radio>
+              </v-radio-group>
           </v-row>
           <v-row>
             <v-radio-group v-model="selectedPlayerNumber" inline>
@@ -216,99 +353,162 @@ const scriptPlayerNumbers = ['不限','5','6','7','8','9'];
           </v-row>
 
         </v-container>
-
-
-
-
       </form>
     </v-dialog>
-  </div>
+
+    <v-dialog v-model="reservationDialog" fullscreen persistent hide-overlay class="reservationDialog">
+      <v-card class="reservationDialogCard">
+        <v-container>
+          <v-row
+              v-for="dm in dms"
+              :key="dm"
+              :label="dm"
+              :value="dm"
+          >
+            <v-col>{{dm.name}}</v-col>
+            <v-col>擅长类型: {{dm.type}}</v-col>
+            <v-col>
+              <v-btn @click="openTimeslotsDialog(dm.name)">选择时间段</v-btn>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-btn @click="reservationDialog = false">关闭</v-btn>
+          </v-row>
+        </v-container>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="timeslotsDialog"  persistent hide-overlay class="timeslotsDialog">
+      <v-card class="timeslotsDialogCard">
+        <v-container fluid>
+          <v-row>
+            <v-radio-group
+                v-model="selectedReservationTimeslot"
+            >
+                <v-radio
+                    v-for="timeslot in selectedTimeslots"
+                    :key="timeslot"
+                    :value="timeslot.period"
+                    :label="timeslot.period"
+                ></v-radio>
+            </v-radio-group>
+          </v-row>
+
+          <v-btn color="primary" @click="openInformationDialog">确定</v-btn>
+          <v-btn color="secondary" @click="timeslotsDialog = false">关闭</v-btn>
+        </v-container>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="informationDialog">
+      <v-card>
+        <v-container>
+          <v-row>
+            <v-col cols="12">
+              <v-text-field label="姓名" v-model="userName"></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field label="微信(必填)" v-model="wechat"></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field label="电话(选填)" v-model="phoneNumber"></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field label="邮箱(选填)" v-model="email"></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-col>
+                <v-btn color="primary" @click="reserveScript">预约</v-btn>
+              </v-col>
+              <v-col>
+                <v-btn color="secondary" @click="informationDialog = false">关闭</v-btn>
+              </v-col>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-card>
+    </v-dialog>
 </template>
 
 <style scoped>
-.search{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100px;
-  gap: 100px;
-}
-.search-input{
-  flex-grow: 0;
-  width: 800px;
-  border: none;
-  outline: none;
 
+.script{
+  height: 300px;
+  width: 250px;
 }
+
 .scripts{
-  align-items: center;
-  justify-content: center;
-  height: 100%;
   background: #181818;
-  margin: 20px;
-  overflow: scroll;
-}
-.scriptDialog{
-  background: transparent;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-.scriptCard{
-  background: #181818;
-  width: 70vw;
-  height: 90vh;
-  margin: auto;      /* 将卡片水平居中 */
-  position: absolute;
-  top: 50%;          /* 将卡片垂直居中 */
-  left: 50%;
-  transform: translate(-50%, -50%); /* 通过 transform 实现居中 */
-  padding: 20px;
   color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-
 }
+
+.scriptCard{
+  background-color: #181818;
+  color: white;
+}
+
+
 .filterDialog{
   background: #181818;
-  width: 50vw;
-  height: 50vh;
-  margin: auto;      /* 将卡片水平居中 */
-  position: absolute;
-  top: 50%;          /* 将卡片垂直居中 */
-  left: 50%;
-  transform: translate(-50%, -50%); /* 通过 transform 实现居中 */
-  padding: 20px;
   color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
+
 .filterForm{
   background: #181818;
+  color: white;
+}
+
+
+.timeslotsDialog{
+  background: #181818;
+  display: flex;
+  flex-direction: column;
   width: 50vw;
   height: 50vh;
+  position: absolute;
+  text-align: center;
+  align-content: center;
+
+}
+
+.timeslotsDialogCard{
+  background: transparent;
+  width: 50vw;
+  height: 50vh;
+  align-content: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 0;
+  color: white;
+}
+
+.reservationDialog{
+  background: #181818;
+  width: 60vw;
+  height: 60vh;
   margin: auto;      /* 将卡片水平居中 */
   position: absolute;
   top: 50%;          /* 将卡片垂直居中 */
   left: 50%;
   transform: translate(-50%, -50%); /* 通过 transform 实现居中 */
-  padding: 20px;
   color: white;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-*::-webkit-scrollbar {
-  display: none;
+.reservationDialogCard{
+  background: #181818;
+  width: 50vw;
+  height: 50vh;
+  align-content: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: white;
 }
+
+
 
 </style>

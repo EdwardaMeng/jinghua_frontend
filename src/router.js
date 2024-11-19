@@ -5,6 +5,9 @@ import Scripts from "@/components/Scripts.vue";
 import AboutUs from "@/components/AboutUs.vue";
 import FYI from "@/components/FYI.vue";
 import Upload from "@/components/Upload.vue";
+import Manage from "@/components/Manage.vue";
+import DmPage from "@/components/DmPage.vue";
+import Reservation from "@/components/Reservation.vue";
 
 const routes = [
     {
@@ -37,6 +40,21 @@ const routes = [
         path: '/upload',
         name: 'upload',
         component: Upload,
+    },
+    {
+        path: '/manage',
+        name: 'manage',
+        component: Manage,
+    },
+    {
+        path: '/DmPage',
+        name: 'DmPage',
+        component: DmPage,
+    },
+    {
+        path: '/Reservation',
+        name: 'Reservation',
+        component: Reservation
     }
 ]
 
